@@ -1,1 +1,1 @@
-This script computes bundles of ecosystem services provided by a pasture grazed by a group of mixed sheep and cattle. The bundles of regulating and provisioning services are computed according to different sheep/cattle proportions and stocking rates.
+This script simulates bundles of ecosystem services provided by a pasture grazed by a mixed group of sheep and cattle. The bundles of regulating and provisioning services are computed according to different sheep/cattle proportions and stocking rates.
