@@ -1,1 +1,543 @@
+import numpy
+import matplotlib.pyplot as plt
+import matplotlib.cm as cm
+import os
+import math
 
+
+
+os.chdir(r'C:\Users\fejoly\Documents\travail_sauvegarde\Models\Matrix')
+
+#####################
+#Processing settings#
+#####################
+discretization_coeff=1
+discretization_grid_state=2000
+discretization_grid_service=200
+Mixity_gain_factor=0.3
+
+
+###############
+# Pasim Output #
+###############
+matrix_data = 'Essai_output_Pasim.csv'   #Txt or csv file containing Pasim outputs to be put in C:\Users\fejoly\Documents\travail_sauvegarde\Models\Matrix
+interval_matrix_data= 0.025             #make sure it is consistent with the PASIM output
+Index_AB=2                              #index corresponding to the column in which is stored the mean aboveground biomass
+Index_SOC=3                             #index corresponding to the column in which is stored the soil organic carbon
+
+
+################
+#Discretization#
+################
+Max_density_livestock=2.26    #units : UGB/ha (Max biomass consumed)
+Min_density_livestock=0.1     #units : UGB/ha
+Max_Prov_ES_income=1500       #units : eur/ha
+Min_Prov_ES_income=0          #units : UGB/ha
+Max_Regul_ES_income=60        #units : UGB/ha
+Min_Regul_ES_income=-70       #units : UGB/ha
+Discretization_interval_livestock=(Max_density_livestock-Min_density_livestock)/discretization_grid_state
+Discretization_interval_prov_SE=(Max_Prov_ES_income-Min_Prov_ES_income)/discretization_grid_service
+Discretization_interval_regul_SE=(Max_Regul_ES_income-Min_Regul_ES_income)/discretization_grid_service
+
+
+############
+#Parameters#
+############
+baseline_density=Max_density_livestock
+Duration_C_sequestation=100                  #number of years it will take for pasture to sequestrate the observed amount of C
+Price_CO2=  0.02099  #0.02099                #units : https://www.eex.com/en/market-data/environmental-markets/spot-market/european-emission-allowances#!/2019/03/19 (19 mar 2019)
+Vegetation_season_duration=180               #duration grass season in days Salamix (150) d'Alexis (180)
+Potential_aboveground_biomass= 5300          #Laqueuille 3550 d'Alexis 3437 5300 Prairies AOP type 18 p 112
+Ratio_above_underground_biomass=4            #IPCC 2006 p. 6.8 Table 6.1
+UGB_consump_day=13                           #Baumont et al 2006. 
+Heads_per_cattle_UGB=1.3067                  #Salamix  1.2952   d'Alexis (1.75)
+Heads_per_sheep_UGB=7.2802                   #Salamix  7.3718   d'Alexis (11.81)
+Minimum_income_from_services=500
+Gain_season_per_UGB_cattle=140.01   #own calculations from Salamix data (122.53) d'Alexis (221.18)
+Gain_season_per_UGB_sheep=152.70    #own calculations from Salamix data (128.63) d'Alexis (254.91) 
+Price_live_weight_cattle=3.9    #3.90 web-agri 25/04/2019 Sancoins (+20%: 4.68 / -20%: 3.12)
+Price_live_weight_sheep= 3.61   #3.61 web-agri 25/04/2019 Sancoins (+20%: 4.332 / -20 % 2.888)
+Adjust_coef_calf_ingestion=1 #0.94  #from weight gain calculation cattle
+Adjust_coef_lamb_ingestion=1 #0.95  #from weight gain calculation lamb
+
+#GHG assessment parameter
+CH4_emission_enteric_fermentation_per_cattle_head=57#    #IPCC Tier 1 ; 57  IPCC 2019 52
+CH4_emission_enteric_fermentation_per_sheep_head=8#      #IPCC Tier 1 ; 8   IPCC 2019 9
+CH4_emission_manure_per_cattle_head=6#                   #IPCC Tier 1 ; 6
+CH4_emission_manure_per_sheep_head=0.19#                 #IPCC Tier 1 ; 0.19
+N2O_emission_manure_per_cattle_head=1.60#                #IPCC Tier 1 ; 1.02 (the 44/28 corresponds to the stochiometric calculation)
+N2O_emission_manure_per_sheep_head=0.20#                 #IPCC Tier 1 ; 0.13 (the 44/28 corresponds to the stochiometric calculation)
+
+EqCO2_CH4= 28 #25                #IPCC, 2013: p714 Climate Change 2013: The Physical Science Basis. Contribution of Working Group I to the Fourth Assessment Report of the Intergovernmental Panel on Climate Change [Solomon, S., D. Qin, M. Manning, Z. Chen, M. Marquis, K.B. Averyt, M. Tignor and H.L. Miller (eds.)]. Cambridge University Press, Cambridge, United Kingdom and New York, NY, USA, 996 pp.
+EqCO2_N2O=265                #IPCC, 2013: p714 Climate Change 2013: The Physical Science Basis. Contribution of Working Group I to the Fourth Assessment Report of the Intergovernmental Panel on Climate Change [Solomon, S., D. Qin, M. Manning, Z. Chen, M. Marquis, K.B. Averyt, M. Tignor and H.L. Miller (eds.)]. Cambridge University Press, Cambridge, United Kingdom and New York, NY, USA, 996 pp.
+Minimum_income_hectar=250    #find something realistic
+Erosion_prevention_SE_value = 49 #49 26.1  #Jónsson & Davíðsdóttir (2016) Classification and valuation of soil ecosystem services (lowest value i.e. 30 USD / 1usd=0.87eur 11/01/2019)
+Ratio_C_Biomass = 0.47                   #Ratio of carbon to biomass IPCC AFOLU page 6.9
+Ratio_CO2_C=44/12                   #from atomic mass (find a chemistry book)
+SOC_ref = 80000                        #IPCC 2006 (to check with type of soil)
+SOC_degradation_factor = 0.95# 0.95       #IPCC 2006 p6.16
+
+
+#Generation of Trajectories_space and Capture_basin matrix
+Income_state_space=numpy.zeros((discretization_grid_state+1,discretization_grid_state+1)) #Matrix used to store the viability score (viable=1, nonviable=0), value of provision services, value of regulating services
+Minimum_income_state_space=numpy.zeros((discretization_grid_state+1,discretization_grid_state+1))
+Prov_SE_income_state_space=numpy.zeros((discretization_grid_state+1,discretization_grid_state+1))
+Regul_SE_income_state_space=numpy.zeros((discretization_grid_state+1,discretization_grid_state+1))
+Ratio_prov_SE=numpy.zeros((discretization_grid_state+1,discretization_grid_state+1))
+Service_space_continuous=numpy.zeros((discretization_grid_service+1,discretization_grid_service+1))
+Service_space_continuous_relative=numpy.zeros((discretization_grid_service+1,discretization_grid_service+1)) #lists the relative robustness metrics
+Service_space_binary=numpy.zeros((discretization_grid_service+1,discretization_grid_service+1))
+PPF1=numpy.zeros((discretization_grid_service+1,discretization_grid_service+1)) #will store the probability value of the Pareto front
+PPF2=numpy.zeros((discretization_grid_service+1,discretization_grid_service+1)) #will store the binary value of the Pareto front to assess its monetary value
+States_aiming_PPF=numpy.zeros((discretization_grid_state+1,discretization_grid_state+1))
+
+#définition des dynamiques (en fonction locales)
+def Provisionning_services(Dsheep,Dcattle,Gain_type):
+    if Dsheep == 0 and Dcattle == 0: #this line is used to avoid division by zero
+        Sheep_ratio = 0.5
+    else:
+        Sheep_ratio=(Dsheep/(Dsheep+Dcattle))
+    
+    #this section is used to define the mixity effect (wide hump as with d'Alexis et al. 2014 ('a') or narrow hump ('e'))    
+    if Gain_type== 'a':
+        Gain_mixity=Mixity_gain_factor*(4.8874*Sheep_ratio**3 - 10.999*Sheep_ratio**2 + 6.1161*Sheep_ratio)#(3.3433*Sheep_ratio**3 - 7.8597*Sheep_ratio**2 + 4.1753*Sheep_ratio + 0.3537)#*(4.8874*Sheep_ratio**3 - 10.999*Sheep_ratio**2 + 6.1161*Sheep_ratio) #function used to make the bump shaped function as described in d'Alexis, look for detail in the excel file 
+    elif Gain_type== 'e':
+        Gain_mixity=Mixity_gain_factor*math.exp(-0.5*(((Sheep_ratio-0.6)/0.065)**2))*0.77 #function used to make the bump shaped function as described in d'Alexis, look for detail in the excel file 
+    
+    #This section calculates meat incomes
+    Meat_Prod_sheep=Dsheep*Gain_season_per_UGB_sheep*(1+Gain_mixity)
+    Meat_Prod_cattle=Dcattle*Gain_season_per_UGB_cattle
+    Meat_Prod_total=Meat_Prod_cattle+Meat_Prod_sheep
+    Meat_income=Meat_Prod_cattle*Price_live_weight_cattle + Meat_Prod_sheep*Price_live_weight_sheep
+    return Meat_Prod_total, Meat_income, Gain_mixity
+
+ #function used to extract PASIM output from a table stored on the computer's HD
+def Extraction_PASIM_output(Studied_density,Baseline_density,Pasim_output,Interval_matrix_data):
+    #Extraction of the SOC values of the 
+    Index_studied_density= int(Studied_density/Interval_matrix_data)+1
+    Index_baseline_density= int(Baseline_density/Interval_matrix_data)+1
+    Line_studied = Pasim_output[Index_studied_density]
+    Line_baseline = Pasim_output[Index_baseline_density]
+    Above_biomass_studied=Line_studied[2]
+    Above_biomass_max=3000
+    SOC_studied = Line_studied[3]
+    SOC_baseline = Line_baseline[3]
+    return SOC_studied, SOC_baseline, Above_biomass_studied, Above_biomass_max
+   
+def Regulating_services(Dsheep,Dcattle,Gain_mixity):
+    #GHG emission from livestock
+    CH4_emission_enteric_fermentation_cattle=Dcattle*Heads_per_cattle_UGB*CH4_emission_enteric_fermentation_per_cattle_head*Vegetation_season_duration/365
+    CH4_emission_enteric_fermentation_sheep=Dsheep*Heads_per_sheep_UGB*CH4_emission_enteric_fermentation_per_sheep_head*Vegetation_season_duration*((1+Mixity_gain_factor*Gain_mixity/2)**0.75)/365
+    
+    CH4_emission_manure_cattle=Dcattle*Heads_per_cattle_UGB*CH4_emission_manure_per_cattle_head*Vegetation_season_duration/365
+    CH4_emission_manure_sheep=Dsheep*Heads_per_sheep_UGB*CH4_emission_manure_per_sheep_head*Vegetation_season_duration*((1+Mixity_gain_factor*Gain_mixity/2)**0.75)/365
+    
+    N2O_emission_manure_cattle=Dcattle*Heads_per_cattle_UGB*N2O_emission_manure_per_cattle_head*Vegetation_season_duration/365
+    N2O_emission_manure_sheep=Dsheep*Heads_per_sheep_UGB*N2O_emission_manure_per_sheep_head*Vegetation_season_duration*((1+Mixity_gain_factor*Gain_mixity/2)**0.75)/365
+    
+    #C storage and erosion control
+    if Use_Pasim_outputs== 'y':
+        [soc_studied,soc_baseline,above_biomass_studied,above_biomass_max]=Extraction_PASIM_output((Dsheep+Dcattle),baseline_density,Pasim_Output,interval_matrix_data)
+        Erosion_control_value=Erosion_prevention_SE_value*(1-((1-above_biomass_studied/above_biomass_max)/0.91)**3)
+        CO2_eq_yearly_sequestrated=(soc_studied-soc_baseline)/Duration_C_sequestation
+                
+    elif Use_Pasim_outputs== 'n':
+        Residual_biomass_studied=Potential_aboveground_biomass-UGB_consump_day * Vegetation_season_duration * (Dsheep*((1+Mixity_gain_factor*Gain_mixity/2)**0.75)*Adjust_coef_lamb_ingestion + Dcattle*Adjust_coef_calf_ingestion)
+        Residual_biomass_baseline=Potential_aboveground_biomass-UGB_consump_day*Vegetation_season_duration*baseline_density
+        Mean_standing_biomass_studied=(Potential_aboveground_biomass+Residual_biomass_studied)/2
+        Mean_standing_biomass_baseline=(Potential_aboveground_biomass+Residual_biomass_baseline)/2
+        C_biomass_studied = Mean_standing_biomass_studied*(1+Ratio_above_underground_biomass)*Ratio_C_Biomass
+        C_biomass_baseline = Mean_standing_biomass_baseline*(1+Ratio_above_underground_biomass)*Ratio_C_Biomass
+        C_soil_studied = SOC_ref * (1-(1-SOC_degradation_factor)*((Potential_aboveground_biomass - Residual_biomass_studied)/Potential_aboveground_biomass))
+        C_soil_baseline = SOC_ref * (1-(1-SOC_degradation_factor)*((Potential_aboveground_biomass - Residual_biomass_baseline)/Potential_aboveground_biomass))  
+        
+        CO2_eq_yearly_sequestrated = (C_biomass_studied+C_soil_studied-C_biomass_baseline-C_soil_baseline)*Ratio_CO2_C/Duration_C_sequestation
+        
+        Erosion_control_value=Erosion_prevention_SE_value*(1-((1-Residual_biomass_studied/Potential_aboveground_biomass)/1)**3)
+        
+    Assessment_GHG_emmitted=(CH4_emission_enteric_fermentation_cattle + CH4_emission_manure_cattle + 
+                             CH4_emission_enteric_fermentation_sheep + CH4_emission_manure_sheep)*EqCO2_CH4 + \
+                            (N2O_emission_manure_cattle + N2O_emission_manure_sheep)*EqCO2_N2O - \
+                             CO2_eq_yearly_sequestrated
+    
+    GHG_assessment_income=-Assessment_GHG_emmitted*Price_CO2
+        
+        #Erosion SE assessment
+
+        
+    return  Assessment_GHG_emmitted, GHG_assessment_income, Erosion_control_value, \
+            CH4_emission_enteric_fermentation_cattle,CH4_emission_enteric_fermentation_sheep, \
+            CH4_emission_manure_cattle, CH4_emission_manure_sheep, \
+            N2O_emission_manure_cattle, N2O_emission_manure_sheep,\
+            CO2_eq_yearly_sequestrated,Residual_biomass_studied
+
+def Extract_non_null_service_states(Service_Space_Continuous): #Transform the numpy matrix into list of vector to apply the Pareto frontier algorithm described in https://pythonhealthcare.org/tag/pareto-front/ and C:\Users\fejoly\Documents\travail_sauvegarde\Publications\EAAP 2019\Extraction Pareto front Python
+    number_non_null_states_loop=numpy.count_nonzero(Service_Space_Continuous)
+    Sail_states = numpy.zeros((number_non_null_states_loop,2))
+    count=-1
+    for iii in range(int(discretization_grid_service+1)):
+        for jjj in range(int(discretization_grid_service+1)):
+            if Service_Space_Continuous[iii,jjj] !=0:
+                count+=1
+                Sail_states[count,0]=iii
+                Sail_states[count,1]=jjj
+    number_non_null_states_loop=len(Sail_states)                               #variabled used to check the consistency of the number of pairs
+    number_non_null_states_loop=numpy.count_nonzero(Service_Space_Continuous)  #in Sail_state and the number of non null states in Service_Space_Continuous
+    
+    return Sail_states #The object returned is 
+
+def Pareto_frontier_finder(Sail_states): #This function identifies the pareto front as a list of boolean associated to the list of vector above created
+    population_size = Sail_states.shape[0]
+    # Create a NumPy index for scores on the pareto front (zero indexed)
+    population_ids = numpy.arange(population_size)
+    # Create a starting list of items on the Pareto front
+    # All items start off as being labelled as on the Parteo front
+    pareto_front = numpy.ones(population_size, dtype=bool)
+    # Loop through each item. This will then be compared with all other items
+    for i in range(population_size):
+        # Loop through all other items
+        for j in range(population_size):
+            # Check if our 'i' point is dominated by out 'j' point
+            #if  all(Sail_states[j] >= Sail_states[i]) and any(Sail_states[j] > Sail_states[i]): #strong constraint
+            if  all(Sail_states[j] > Sail_states[i]):  #weak contraint
+                # j dominates i. Label 'i' point as not on Pareto front
+                pareto_front[i]=0
+                
+                # Stop further comparisons with 'i' (no more comparisons needed)
+                break
+
+    return pareto_front
+
+#The Draw_Pareto function projects the Pareto front above created in the service state space and extracts the value of the bundles of the front
+def Draw_Pareto(Service_Space_Continuous,Service_Space_Binary,Pareto_front,Sail_states,PPF1,PPF2):
+    List_Pareto_front_values=numpy.zeros((numpy.sum(Pareto_front),6))
+    count_P=-1
+    for k in range(len(Pareto_front)):
+        if pareto_front[k]==True:
+            count_P+=1
+            Coord_X_PPF = int(Sail_states[k,0])
+            Coord_Y_PPF = int(Sail_states[k,1])
+            PPF1[Coord_X_PPF,Coord_Y_PPF] = Service_Space_Continuous[Coord_X_PPF,Coord_Y_PPF] #PPF1 will be the probabilistic Pareto front
+            PPF2[Coord_X_PPF,Coord_Y_PPF] = Coord_X_PPF*Discretization_interval_prov_SE+Min_Prov_ES_income + Coord_Y_PPF*Discretization_interval_regul_SE+Min_Regul_ES_income     #PPF2 will store the value of the bundles          
+            List_Pareto_front_values[count_P,0]=round(int(Coord_X_PPF),2)
+            List_Pareto_front_values[count_P,1]=round(int(Coord_Y_PPF),2)
+            List_Pareto_front_values[count_P,2]=round(Coord_X_PPF*Discretization_interval_prov_SE+Min_Prov_ES_income,2)
+            List_Pareto_front_values[count_P,3]=round(Coord_Y_PPF*Discretization_interval_regul_SE+Min_Regul_ES_income,2)
+            List_Pareto_front_values[count_P,4]=round(Service_Space_Continuous[Coord_X_PPF,Coord_Y_PPF],2)
+            List_Pareto_front_values[count_P,5]=List_Pareto_front_values[count_P,2]+List_Pareto_front_values[count_P,3]
+            
+    return PPF1,PPF2,List_Pareto_front_values
+
+
+            
+
+###############################
+#    Test of the functions    #
+###############################
+Gain_type=input("Do you want to test d'Alexis mixed-species effect (a) or a narrow shaped type of affect (e): ")
+print("")
+Treatment_type=input('If you want to test the model type "t" (test) otherwise type "k" (kernel) : ')    
+
+if Treatment_type != 't' and Treatment_type != 'k':
+    print('Error : you need to type either "t" or "k"')
+elif Treatment_type == "t":
+    Use_Pasim_outputs = input('Use PASIM outputs in regulating SE assessment? ("y" or "n"): ')
+    if Use_Pasim_outputs =='y':
+        Pasim_Output = numpy.genfromtxt(matrix_data,delimiter=";")
+    dsheep=float(input('Type the sheep density in UGB/ha: '))
+    dcattle=float(input('Type the cattle density in UGB/ha: '))
+    [produced_meat,meat_income,gain_mixity]=Provisionning_services(dsheep,dcattle,Gain_type)
+    [ghg_assessment,ghg_assessment_income,erosion_control_value, \
+     ch4_enteric_emission_cattle,ch4_enteric_emission_sheep, \
+     ch4_manure_emission_cattle,ch4_manure_emission_sheep,\
+     no2_manure_emission_cattle, no2_manure_emission_sheep, \
+     co2_eq_yearly_sequestrated,residual_biomass_studied]= Regulating_services(dsheep,dcattle,gain_mixity)
+    print("")
+    print('Produced equivalant liveweight:', round(produced_meat,2),'kg for a meat income of', round(meat_income,2), 'eur')
+    print('Yearly CH4 enteric emissions of cattle and sheep are resp.', round(ch4_enteric_emission_cattle,2), ' and ',  round(ch4_enteric_emission_sheep,2), 'kg')
+    print('Yearly CH4 manure emissions of cattle and sheep are resp. ', round(ch4_manure_emission_cattle,2), ' and ', round(ch4_manure_emission_sheep,2), 'kg')    
+    print('Yearly NO2 manure emissions of cattle and sheep are resp. ', round(no2_manure_emission_cattle,2), ' and ', round(no2_manure_emission_sheep,2), 'kg')
+    print('Yearly emission of CO2 by pasture is', round(-co2_eq_yearly_sequestrated,2), 'kg')
+    print('Emitted GHG over the year is:', round(ghg_assessment,2),'kg of eq. CO2 for a corresponding revenue of ', round(ghg_assessment_income,2), 'eur')
+    print('The erosion prevention ES accounts for',round(erosion_control_value,2), 'eur')
+elif Treatment_type == "k":
+    Use_Pasim_outputs = input('Use PASIM outputs in regulating SE assessment? ("y" or "n"): ')
+    if Use_Pasim_outputs =='y':
+        Pasim_Output = numpy.genfromtxt(matrix_data,delimiter=";")
+        print(Pasim_Output)
+    print(" ")
+    Management_type=input('If you want to test monospecific configuration type "o" and "i" for the mixed one: ')
+        
+    
+################################
+#Introduction of the simulation#
+################################
+    print("Beginning of the simulation")
+    print("")
+    print("Sizes of the state space is :", 0.5*(discretization_grid_state+1)*(discretization_grid_state+2), "cells")
+    print("")
+    print("")
+    if Management_type=='i':
+        for i in range(int(discretization_grid_state+1)):
+            for j in range(int(discretization_grid_state-i+1)):
+                dsheep = i*Discretization_interval_livestock+Min_density_livestock*0.5
+                dcattle = j*Discretization_interval_livestock+Min_density_livestock*0.5
+                
+                [produced_meat,meat_income,gain_mixity]=Provisionning_services(dsheep,dcattle,Gain_type)
+                
+                [ghg_assessment,ghg_assessment_income,erosion_control_value, \
+                 ch4_emission_cattle,ch4_emission_sheep, \
+                 ch4_manure_emission_cattle,ch4_manure_emission_sheep,\
+                 no2_manure_emission_cattle, no2_manure_emission_sheep, \
+                 co2_eq_yearly_sequestrated,residual_biomass_studied]= Regulating_services(dsheep,dcattle,gain_mixity)
+                
+                Total_income=meat_income+ghg_assessment_income+erosion_control_value
+                Income_state_space[i,j]=Total_income
+                
+                if Total_income>= Minimum_income_from_services:
+                    Minimum_income_state_space[i,j]=Total_income
+                Ratio_prov_SE[i,j]=meat_income/Total_income
+                
+                Prov_SE_income_state_space[i,j]=meat_income
+                Regul_SE_income_state_space[i,j]=ghg_assessment_income+erosion_control_value
+                
+                if residual_biomass_studied>=0:
+                    ii=int((meat_income-Min_Prov_ES_income)/Discretization_interval_prov_SE)
+                    jj=int((ghg_assessment_income+erosion_control_value-Min_Regul_ES_income)/Discretization_interval_regul_SE)
+                    Service_space_continuous[ii,jj]+=1#/(0.5*(discretization_grid_state+1)*(discretization_grid_state+2)) #selon formule 1 + 2 + … + n = ½ n (n + 1)
+                    Service_space_binary[ii,jj]=1
+                
+                if Total_income>= Minimum_income_from_services:
+                    Minimum_income_state_space[i,j]=Total_income
+                
+    if Management_type=='o':
+        for i in range(int(discretization_grid_state+1)):
+            j=0
+            dsheep = i*Discretization_interval_livestock+Min_density_livestock
+            dcattle = j*Discretization_interval_livestock
+            
+            [produced_meat,meat_income,gain_mixity]=Provisionning_services(dsheep,dcattle,Gain_type)
+            
+            [ghg_assessment,ghg_assessment_income,erosion_control_value, \
+             ch4_emission_cattle,ch4_emission_sheep, \
+             ch4_manure_emission_cattle,ch4_manure_emission_sheep,\
+             no2_manure_emission_cattle, no2_manure_emission_sheep, \
+             co2_eq_yearly_sequestrated,residual_biomass_studied]= Regulating_services(dsheep,dcattle,gain_mixity)
+            
+            Total_income=meat_income+ghg_assessment_income+erosion_control_value
+            Income_state_space[i,j]=Total_income
+            Ratio_prov_SE[i,j]=meat_income/Total_income
+            Prov_SE_income_state_space[i,j]=meat_income
+            Regul_SE_income_state_space[i,j]=ghg_assessment_income+erosion_control_value
+            
+            ii=int((meat_income-Min_Prov_ES_income)/Discretization_interval_prov_SE)
+            jj=int((ghg_assessment_income+erosion_control_value-Min_Regul_ES_income)/Discretization_interval_regul_SE)
+            Service_space_continuous[ii,jj]+=1/((discretization_grid_state+1)*2)
+            Service_space_binary[ii,jj]=1
+            
+        for j in range(int(discretization_grid_state+1)): #The length of this loop is discretization_grid_state
+            i=0
+            dsheep = i*Discretization_interval_livestock
+            dcattle = j*Discretization_interval_livestock+Min_density_livestock
+            
+            [produced_meat,meat_income,gain_mixity]=Provisionning_services(dsheep,dcattle,Gain_type)
+            
+            [ghg_assessment,ghg_assessment_income,erosion_control_value, \
+             ch4_emission_cattle,ch4_emission_sheep, \
+             ch4_manure_emission_cattle,ch4_manure_emission_sheep,\
+             no2_manure_emission_cattle, no2_manure_emission_sheep, \
+             co2_eq_yearly_sequestrated,residual_biomass_studied]= Regulating_services(dsheep,dcattle,gain_mixity)
+            
+            Total_income=meat_income+ghg_assessment_income+erosion_control_value
+            Income_state_space[i,j]=Total_income
+            Ratio_prov_SE[i,j]=meat_income/Total_income
+            Prov_SE_income_state_space[i,j]=meat_income
+            Regul_SE_income_state_space[i,j]=ghg_assessment_income+erosion_control_value
+            
+            ii=int((meat_income-Min_Prov_ES_income)/Discretization_interval_prov_SE)
+            jj=int((ghg_assessment_income+erosion_control_value-Min_Regul_ES_income)/Discretization_interval_regul_SE)
+            Service_space_continuous[ii,jj]+=1/((discretization_grid_state+1)*2)
+            Service_space_binary[ii,jj]=1
+            
+#########################################
+#  End of the dynamic simulation loops  #
+#########################################  
+   
+    Check_sum_of_proba_service_space=numpy.sum(Service_space_continuous)
+    States_of_the_sail = Extract_non_null_service_states(Service_space_continuous) #Transform the numpy matrix into list of vector to apply the Pareto frontier algorithm described in https://pythonhealthcare.org/tag/pareto-front/ and C:\Users\fejoly\Documents\travail_sauvegarde\Publications\EAAP 2019\Extraction Pareto front Python
+    pareto_front=Pareto_frontier_finder(States_of_the_sail)
+    [PPFF1,PPFF2,List_P_front_values]=Draw_Pareto(Service_space_continuous,Service_space_binary,pareto_front,States_of_the_sail,PPF1,PPF2)   
+    Mean_probability_value_all_state_space=numpy.sum(Service_space_continuous)/numpy.count_nonzero(Service_space_continuous)
+    Mean_probability_value_pareto_front=numpy.sum(PPFF1)/numpy.count_nonzero(PPFF1)
+    Mean_monetary_value_pareto_front=numpy.sum(PPFF2)/numpy.count_nonzero(PPFF2)
+    
+##########################################
+#     Redraw robustness matrix           #
+##########################################
+    for i in range(int(discretization_grid_service+1)):
+        for j in range(int(discretization_grid_service+1)):
+            Service_space_continuous_relative[i,j]=Service_space_continuous[i,j]/Mean_probability_value_all_state_space
+    
+
+####################################################################
+#   Identification of the states providing ES in the Pareto front  #
+####################################################################
+
+    if Management_type=='i':
+        for i in range(int(discretization_grid_state+1)):
+            for j in range(int(discretization_grid_state-i+1)):
+                
+                Temp_Prov_income = Prov_SE_income_state_space[i,j]
+                Temp_Regul_income = Regul_SE_income_state_space[i,j]
+                
+                ii=int((Temp_Prov_income-Min_Prov_ES_income)/Discretization_interval_prov_SE)
+                jj=int((Temp_Regul_income-Min_Regul_ES_income)/Discretization_interval_regul_SE)
+                
+                if PPFF1[ii,jj] !=0 :
+                    States_aiming_PPF[i,j] = 1
+                    
+    if Management_type=='o':
+        for i in range(int(discretization_grid_state+1)):
+            j=0
+            dsheep = i*Discretization_interval_livestock+Min_density_livestock
+            dcattle = j*Discretization_interval_livestock
+            
+            Temp_Prov_income = Prov_SE_income_state_space[i,j]
+            Temp_Regul_income = Regul_SE_income_state_space[i,j]
+            
+            ii=int((Temp_Prov_income-Min_Prov_ES_income)/Discretization_interval_prov_SE)
+            jj=int((Temp_Regul_income-Min_Regul_ES_income)/Discretization_interval_regul_SE)
+            
+            if PPFF1[ii,jj] !=0 :
+                States_aiming_PPF[i,j] = 1
+            
+        for j in range(int(discretization_grid_state+1)): #The length of this loop is discretization_grid_state
+            i=0
+            dsheep = i*Discretization_interval_livestock
+            dcattle = j*Discretization_interval_livestock+Min_density_livestock
+            
+            Temp_Prov_income = Prov_SE_income_state_space[i,j]
+            Temp_Regul_income = Regul_SE_income_state_space[i,j]
+            
+            ii=int((Temp_Prov_income-Min_Prov_ES_income)/Discretization_interval_prov_SE)
+            jj=int((Temp_Regul_income-Min_Regul_ES_income)/Discretization_interval_regul_SE)
+            
+            if PPFF1[ii,jj] !=0 :
+                States_aiming_PPF[i,j] = 1
+
+                
+    print('The income state space matrix is ')
+    print ("")
+    print(Income_state_space)
+    print("")
+    print("The number of non null states in the service state spaces is",len(States_of_the_sail))
+    print("and the coordinates of the non-null bundles of the service space is")
+    print("")
+    print(States_of_the_sail)
+    print("")
+    print("The bundles that belong to the Pareto front are")
+    print("")
+    print(pareto_front)
+    print("")
+    print("The monetary value of the bundles of the Pareto Front are:")
+    print("")
+    print(PPFF2)
+    print("")
+    print("The coordinates, ES values and MGMT decision density along the P front is")
+    print("")
+    with numpy.printoptions(threshold=numpy.inf):
+        print(List_P_front_values)
+    print("")
+    print("The total of the pareto front is", round(numpy.sum(PPFF2)), "and the number of point of the discretized front is", numpy.sum(pareto_front))
+    print("The mean monetary value of the bundles on the Pareto front is therefore", round(Mean_monetary_value_pareto_front,2))
+    print("")
+    print("Mean probability value over the Pareto frontier is",Mean_probability_value_pareto_front,"while it is ",Mean_probability_value_all_state_space, "in the service space" )
+    print("The ratio Pareto/Mean is therefore ", round(Mean_probability_value_pareto_front/Mean_probability_value_all_state_space,2))
+    print("")
+    print("The check sum of the service space is ", Check_sum_of_proba_service_space)
+
+    plt.figure(1)
+    cmap=plt.get_cmap('Blues')
+    cmap.set_bad('Black')
+    Prov_SE_income_state_space_masked=numpy.ma.masked_equal(Prov_SE_income_state_space,0)
+    plot_1 = plt.imshow(Prov_SE_income_state_space_masked.T, cmap=cm.Blues, interpolation='nearest', origin='lower', extent=[Min_density_livestock, Max_density_livestock, Min_density_livestock, Max_density_livestock], aspect = (Max_density_livestock-Min_density_livestock)/(Max_density_livestock-Min_density_livestock))
+    plt.xlabel('SR sheep')
+    plt.ylabel('SR cattle')
+    plt.title('Provisioning ES (Eur)')
+    plt.colorbar(plot_1)
+    plt.grid(True)
+
+    plt.figure(2)
+    Regul_SE_income_state_space_masked=numpy.ma.masked_equal(Regul_SE_income_state_space,0)
+    plot_2 = plt.imshow(Regul_SE_income_state_space_masked.T, cmap=cm.Blues, interpolation='nearest', origin='lower', extent=[Min_density_livestock, Max_density_livestock, Min_density_livestock, Max_density_livestock], aspect = (Max_density_livestock-Min_density_livestock)/(Max_density_livestock-Min_density_livestock))
+    plt.xlabel('SR sheep')
+    plt.ylabel('SR cattle')
+    plt.title('Regulating ESs (Eur)')
+    plt.colorbar(plot_2)
+    plt.grid(True)
+    
+    plt.figure(3)
+    plot_3 = plt.imshow(Income_state_space.T, cmap=cm.Blues, interpolation='nearest', origin='lower', extent=[Min_density_livestock, Max_density_livestock, Min_density_livestock, Max_density_livestock], aspect = (Max_density_livestock-Min_density_livestock)/(Max_density_livestock-Min_density_livestock))
+    plt.xlabel('D sheep')
+    plt.ylabel('D cattle')
+    plt.title('Total yearly income (Prov + regul services')
+    plt.colorbar(plot_3)
+    plt.grid(True)    
+
+    plt.figure(4)
+    plot_4 = plt.imshow(Minimum_income_state_space.T, cmap=cm.Blues, interpolation='nearest', origin='lower', extent=[Min_density_livestock, Max_density_livestock, Min_density_livestock, Max_density_livestock], aspect = (Max_density_livestock-Min_density_livestock)/(Max_density_livestock-Min_density_livestock))
+    plt.xlabel('D sheep')
+    plt.ylabel('D cattle')
+    plt.title('Total yearly income (Prov + regul services) above threshold')
+    plt.colorbar(plot_4)
+    plt.grid(True)    
+
+    plt.figure(5)
+    Service_space_binary_masked=numpy.ma.masked_equal(Service_space_binary,0)
+    plot_5 = plt.imshow(Service_space_binary_masked.T, cmap=cm.Greens, interpolation='nearest', origin='lower',  extent=[Min_Prov_ES_income, Max_Prov_ES_income, Min_Regul_ES_income, Max_Regul_ES_income], aspect = (Max_Prov_ES_income-Min_Prov_ES_income)/(Max_Regul_ES_income-Min_Regul_ES_income))
+    plt.xlabel('Provisioning service (eur)')
+    plt.ylabel('Regulating service (eur)')
+    plt.title('Existing ES bundles')
+    plt.colorbar(plot_5)
+    plt.grid(True)
+    plt.savefig('Binary service_state_space.png', dpi = 600)
+
+    plt.figure(6)
+    plot_6 = plt.imshow(Service_space_continuous_relative.T, cmap=cm.Greens, interpolation='nearest', origin='lower',  extent=[Min_Prov_ES_income, Max_Prov_ES_income, Min_Regul_ES_income, Max_Regul_ES_income], aspect = (Max_Prov_ES_income-Min_Prov_ES_income)/(Max_Regul_ES_income-Min_Regul_ES_income))
+    plt.xlabel('Provisioning service (eur)')
+    plt.ylabel('Regulating service (eur)')
+    plt.title('ES bundle robustness')
+    plt.colorbar(plot_6)
+    plt.grid(True)
+    plt.savefig('Probabilistic service_state_space.png', dpi = 600)
+    
+    plt.figure(7)
+    cmap=plt.get_cmap('Greens')
+    Service_space_continuous_relative_masked=numpy.ma.masked_equal(Service_space_continuous_relative,0)
+    plot_7 = plt.imshow(Service_space_continuous_relative_masked.T, cmap=cm.Greens, interpolation='nearest', origin='lower',  extent=[Min_Prov_ES_income, Max_Prov_ES_income, Min_Regul_ES_income, Max_Regul_ES_income], aspect = (Max_Prov_ES_income-Min_Prov_ES_income)/(Max_Regul_ES_income-Min_Regul_ES_income))
+    plt.xlabel('Provisioning service (eur)')
+    plt.ylabel('Regulating service (eur)')
+    plt.title('ES bundle robustness')
+    plt.colorbar(plot_7)
+    plt.grid(True)
+    plt.savefig('Probabilistic service_state_space_masked.png', dpi = 600)
+
+    plt.figure(8)
+    cmap=plt.get_cmap('Greens')
+    PPFF1_masked=numpy.ma.masked_equal(PPFF1,0)    
+    plot_8 = plt.imshow(PPFF1_masked.T, cmap=cm.Greens, interpolation='nearest', origin='lower', extent=[Min_Prov_ES_income, Max_Prov_ES_income, Min_Regul_ES_income, Max_Regul_ES_income], aspect = (Max_Prov_ES_income-Min_Prov_ES_income)/(Max_Regul_ES_income-Min_Regul_ES_income))
+    plt.xlabel('Provisioning service (eur)')
+    plt.ylabel('Regulating service (eur)')
+    plt.title('Production Productivity Frontier (PPF)')
+    plt.colorbar(plot_8)
+    plt.grid(True)
+    plt.savefig('Pareto_line.png', dpi = 600)    
+    
+    plt.figure(9)
+    plot_9 = plt.imshow(States_aiming_PPF.T, cmap=cm.Blues, interpolation='nearest', origin='lower', extent=[Min_density_livestock, Max_density_livestock, Min_density_livestock, Max_density_livestock], aspect = (Max_density_livestock-Min_density_livestock)/(Max_density_livestock-Min_density_livestock))
+    plt.xlabel('Sheep stocking rate (LU/ha)')
+    plt.ylabel('Cattle stocking rate (LU/ha)')
+    plt.title('Herds aiming the PPF')
+    plt.colorbar(plot_9)
+    plt.grid(True)
+    plt.savefig('States_aiming_Pareto_line.png', dpi = 600) 
