@@ -1,3 +1,9 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Jul 10 11:01:35 2014
+
+@author: Frederic Joly
+"""
 import numpy
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
@@ -14,7 +20,7 @@ os.chdir(r'C:\Users\fejoly\Documents\travail_sauvegarde\Models\Matrix')
 discretization_coeff=1
 discretization_grid_state=2000
 discretization_grid_service=200
-Mixity_gain_factor=0.3
+Mixity_baseline_gain_factor=0.3
 
 
 ###############
@@ -31,10 +37,10 @@ Index_SOC=3                             #index corresponding to the column in wh
 ################
 Max_density_livestock=2.26    #units : UGB/ha (Max biomass consumed)
 Min_density_livestock=0.1     #units : UGB/ha
-Max_Prov_ES_income=1500       #units : eur/ha
+Max_Prov_ES_income=1100       #units : eur/ha
 Min_Prov_ES_income=0          #units : UGB/ha
 Max_Regul_ES_income=60        #units : UGB/ha
-Min_Regul_ES_income=-70       #units : UGB/ha
+Min_Regul_ES_income=-90       #units : UGB/ha
 Discretization_interval_livestock=(Max_density_livestock-Min_density_livestock)/discretization_grid_state
 Discretization_interval_prov_SE=(Max_Prov_ES_income-Min_Prov_ES_income)/discretization_grid_service
 Discretization_interval_regul_SE=(Max_Regul_ES_income-Min_Regul_ES_income)/discretization_grid_service
@@ -45,18 +51,19 @@ Discretization_interval_regul_SE=(Max_Regul_ES_income-Min_Regul_ES_income)/discr
 ############
 baseline_density=Max_density_livestock
 Duration_C_sequestation=100                  #number of years it will take for pasture to sequestrate the observed amount of C
-Price_CO2=  0.02099  #0.02099                #units : https://www.eex.com/en/market-data/environmental-markets/spot-market/european-emission-allowances#!/2019/03/19 (19 mar 2019)
 Vegetation_season_duration=180               #duration grass season in days Salamix (150) d'Alexis (180)
 Potential_aboveground_biomass= 5300          #Laqueuille 3550 d'Alexis 3437 5300 Prairies AOP type 18 p 112
 Ratio_above_underground_biomass=4            #IPCC 2006 p. 6.8 Table 6.1
 UGB_consump_day=13                           #Baumont et al 2006. 
-Heads_per_cattle_UGB=1.3067                  #Salamix  1.2952   d'Alexis (1.75)
-Heads_per_sheep_UGB=7.2802                   #Salamix  7.3718   d'Alexis (11.81)
+Heads_per_cattle_UGB=1.2728#1.3067                  #Salamix  1.2952   d'Alexis (1.75)
+Heads_per_sheep_UGB=7.3718#7.2802                   #Salamix  7.3718   d'Alexis (11.81)
 Minimum_income_from_services=500
-Gain_season_per_UGB_cattle=140.01   #own calculations from Salamix data (122.53) d'Alexis (221.18)
-Gain_season_per_UGB_sheep=152.70    #own calculations from Salamix data (128.63) d'Alexis (254.91) 
-Price_live_weight_cattle=3.9    #3.90 web-agri 25/04/2019 Sancoins (+20%: 4.68 / -20%: 3.12)
-Price_live_weight_sheep= 3.61   #3.61 web-agri 25/04/2019 Sancoins (+20%: 4.332 / -20 % 2.888)
+Gain_season_per_UGB_cattle=150.77 #own calculations from Salamix data 
+Gain_season_per_UGB_sheep=128.63  #own calculations from Salamix data
+Price_live_weight_cattle=2.75   #2.75 web-agri 25/08/2020 Ussel 
+Price_live_weight_sheep= 3.33   #3.33 web-agri 25/08/2020 Sauges 
+Erosion_prevention_SE_value = 49 #49 #Van der Ploeg and de Groot 2010
+Price_CO2=  0.02815          #0.02815       #https://ember-climate.org/carbon-price-viewer/
 Adjust_coef_calf_ingestion=1 #0.94  #from weight gain calculation cattle
 Adjust_coef_lamb_ingestion=1 #0.95  #from weight gain calculation lamb
 
@@ -65,13 +72,12 @@ CH4_emission_enteric_fermentation_per_cattle_head=57#    #IPCC Tier 1 ; 57  IPCC
 CH4_emission_enteric_fermentation_per_sheep_head=8#      #IPCC Tier 1 ; 8   IPCC 2019 9
 CH4_emission_manure_per_cattle_head=6#                   #IPCC Tier 1 ; 6
 CH4_emission_manure_per_sheep_head=0.19#                 #IPCC Tier 1 ; 0.19
-N2O_emission_manure_per_cattle_head=1.60#                #IPCC Tier 1 ; 1.02 (the 44/28 corresponds to the stochiometric calculation)
-N2O_emission_manure_per_sheep_head=0.20#                 #IPCC Tier 1 ; 0.13 (the 44/28 corresponds to the stochiometric calculation)
+N2O_emission_manure_per_cattle_head=1.60#                #IPCC Tier 1 ; 1.60 (the 44/28 corresponds to the stochiometric calculation)
+N2O_emission_manure_per_sheep_head=0.20#                 #IPCC Tier 1 ; 0.20 (the 44/28 corresponds to the stochiometric calculation)
 
-EqCO2_CH4= 28 #25                #IPCC, 2013: p714 Climate Change 2013: The Physical Science Basis. Contribution of Working Group I to the Fourth Assessment Report of the Intergovernmental Panel on Climate Change [Solomon, S., D. Qin, M. Manning, Z. Chen, M. Marquis, K.B. Averyt, M. Tignor and H.L. Miller (eds.)]. Cambridge University Press, Cambridge, United Kingdom and New York, NY, USA, 996 pp.
+EqCO2_CH4= 28                #IPCC, 2013: p714 Climate Change 2013: The Physical Science Basis. Contribution of Working Group I to the Fourth Assessment Report of the Intergovernmental Panel on Climate Change [Solomon, S., D. Qin, M. Manning, Z. Chen, M. Marquis, K.B. Averyt, M. Tignor and H.L. Miller (eds.)]. Cambridge University Press, Cambridge, United Kingdom and New York, NY, USA, 996 pp.
 EqCO2_N2O=265                #IPCC, 2013: p714 Climate Change 2013: The Physical Science Basis. Contribution of Working Group I to the Fourth Assessment Report of the Intergovernmental Panel on Climate Change [Solomon, S., D. Qin, M. Manning, Z. Chen, M. Marquis, K.B. Averyt, M. Tignor and H.L. Miller (eds.)]. Cambridge University Press, Cambridge, United Kingdom and New York, NY, USA, 996 pp.
-Minimum_income_hectar=250    #find something realistic
-Erosion_prevention_SE_value = 49 #49 26.1  #Jónsson & Davíðsdóttir (2016) Classification and valuation of soil ecosystem services (lowest value i.e. 30 USD / 1usd=0.87eur 11/01/2019)
+
 Ratio_C_Biomass = 0.47                   #Ratio of carbon to biomass IPCC AFOLU page 6.9
 Ratio_CO2_C=44/12                   #from atomic mass (find a chemistry book)
 SOC_ref = 80000                        #IPCC 2006 (to check with type of soil)
@@ -100,9 +106,9 @@ def Provisionning_services(Dsheep,Dcattle,Gain_type):
     
     #this section is used to define the mixity effect (wide hump as with d'Alexis et al. 2014 ('a') or narrow hump ('e'))    
     if Gain_type== 'a':
-        Gain_mixity=Mixity_gain_factor*(4.8874*Sheep_ratio**3 - 10.999*Sheep_ratio**2 + 6.1161*Sheep_ratio)#(3.3433*Sheep_ratio**3 - 7.8597*Sheep_ratio**2 + 4.1753*Sheep_ratio + 0.3537)#*(4.8874*Sheep_ratio**3 - 10.999*Sheep_ratio**2 + 6.1161*Sheep_ratio) #function used to make the bump shaped function as described in d'Alexis, look for detail in the excel file 
+        Gain_mixity=Mixity_baseline_gain_factor*(3.3433*Sheep_ratio**3 - 7.8597*Sheep_ratio**2 + 4.1753*Sheep_ratio + 0.341)#(3.3433*Sheep_ratio**3 - 7.8597*Sheep_ratio**2 + 4.1753*Sheep_ratio + 0.3537)#*(4.8874*Sheep_ratio**3 - 10.999*Sheep_ratio**2 + 6.1161*Sheep_ratio) #function used to make the bump shaped function as described in d'Alexis, look for detail in the excel file 
     elif Gain_type== 'e':
-        Gain_mixity=Mixity_gain_factor*math.exp(-0.5*(((Sheep_ratio-0.6)/0.065)**2))*0.77 #function used to make the bump shaped function as described in d'Alexis, look for detail in the excel file 
+        Gain_mixity=Mixity_baseline_gain_factor*math.exp(-0.5*(((Sheep_ratio-0.46)/0.05)**2))*0.93 #function used to make the bump shaped function as described in d'Alexis, look for detail in the excel file 
     
     #This section calculates meat incomes
     Meat_Prod_sheep=Dsheep*Gain_season_per_UGB_sheep*(1+Gain_mixity)
@@ -127,13 +133,13 @@ def Extraction_PASIM_output(Studied_density,Baseline_density,Pasim_output,Interv
 def Regulating_services(Dsheep,Dcattle,Gain_mixity):
     #GHG emission from livestock
     CH4_emission_enteric_fermentation_cattle=Dcattle*Heads_per_cattle_UGB*CH4_emission_enteric_fermentation_per_cattle_head*Vegetation_season_duration/365
-    CH4_emission_enteric_fermentation_sheep=Dsheep*Heads_per_sheep_UGB*CH4_emission_enteric_fermentation_per_sheep_head*Vegetation_season_duration*((1+Mixity_gain_factor*Gain_mixity/2)**0.75)/365
+    CH4_emission_enteric_fermentation_sheep=Dsheep*Heads_per_sheep_UGB*CH4_emission_enteric_fermentation_per_sheep_head*Vegetation_season_duration*((1+Gain_season_per_UGB_sheep*Gain_mixity/1200)**0.75)/365
     
     CH4_emission_manure_cattle=Dcattle*Heads_per_cattle_UGB*CH4_emission_manure_per_cattle_head*Vegetation_season_duration/365
-    CH4_emission_manure_sheep=Dsheep*Heads_per_sheep_UGB*CH4_emission_manure_per_sheep_head*Vegetation_season_duration*((1+Mixity_gain_factor*Gain_mixity/2)**0.75)/365
+    CH4_emission_manure_sheep=Dsheep*Heads_per_sheep_UGB*CH4_emission_manure_per_sheep_head*Vegetation_season_duration*((1+Gain_season_per_UGB_sheep*Gain_mixity/1200)**0.75)/365
     
     N2O_emission_manure_cattle=Dcattle*Heads_per_cattle_UGB*N2O_emission_manure_per_cattle_head*Vegetation_season_duration/365
-    N2O_emission_manure_sheep=Dsheep*Heads_per_sheep_UGB*N2O_emission_manure_per_sheep_head*Vegetation_season_duration*((1+Mixity_gain_factor*Gain_mixity/2)**0.75)/365
+    N2O_emission_manure_sheep=Dsheep*Heads_per_sheep_UGB*N2O_emission_manure_per_sheep_head*Vegetation_season_duration*((1+Gain_season_per_UGB_sheep*Gain_mixity/1200)**0.75)/365
     
     #C storage and erosion control
     if Use_Pasim_outputs== 'y':
@@ -142,7 +148,7 @@ def Regulating_services(Dsheep,Dcattle,Gain_mixity):
         CO2_eq_yearly_sequestrated=(soc_studied-soc_baseline)/Duration_C_sequestation
                 
     elif Use_Pasim_outputs== 'n':
-        Residual_biomass_studied=Potential_aboveground_biomass-UGB_consump_day * Vegetation_season_duration * (Dsheep*((1+Mixity_gain_factor*Gain_mixity/2)**0.75)*Adjust_coef_lamb_ingestion + Dcattle*Adjust_coef_calf_ingestion)
+        Residual_biomass_studied=Potential_aboveground_biomass-UGB_consump_day * Vegetation_season_duration * (Dsheep*((1+Gain_season_per_UGB_sheep*Gain_mixity/1200)**0.75)*Adjust_coef_lamb_ingestion + Dcattle*Adjust_coef_calf_ingestion)
         Residual_biomass_baseline=Potential_aboveground_biomass-UGB_consump_day*Vegetation_season_duration*baseline_density
         Mean_standing_biomass_studied=(Potential_aboveground_biomass+Residual_biomass_studied)/2
         Mean_standing_biomass_baseline=(Potential_aboveground_biomass+Residual_biomass_baseline)/2
@@ -534,9 +540,9 @@ elif Treatment_type == "k":
     plt.savefig('Pareto_line.png', dpi = 600)    
     
     plt.figure(9)
-    plot_9 = plt.imshow(States_aiming_PPF.T, cmap=cm.Blues, interpolation='nearest', origin='lower', extent=[Min_density_livestock, Max_density_livestock, Min_density_livestock, Max_density_livestock], aspect = (Max_density_livestock-Min_density_livestock)/(Max_density_livestock-Min_density_livestock))
-    plt.xlabel('Sheep stocking rate (LU/ha)')
-    plt.ylabel('Cattle stocking rate (LU/ha)')
+    plot_9 = plt.imshow(States_aiming_PPF.T, cmap=cm.Blues, interpolation='nearest', origin='lower', extent=[Min_density_livestock-0.05, Max_density_livestock-0.05, Min_density_livestock-0.05, Max_density_livestock-0.05], aspect = (Max_density_livestock-Min_density_livestock)/(Max_density_livestock-Min_density_livestock))
+    plt.xlabel('Sheep density (LU/ha)')
+    plt.ylabel('Cattle density (LU/ha)')
     plt.title('Herds aiming the PPF')
     plt.colorbar(plot_9)
     plt.grid(True)
