@@ -38,9 +38,9 @@ Index_SOC=3                             #index corresponding to the column in wh
 Max_density_livestock=2.26    #units : UGB/ha (Max biomass consumed)
 Min_density_livestock=0.1     #units : UGB/ha
 Max_Prov_ES_income=1100       #units : eur/ha
-Min_Prov_ES_income=0          #units : UGB/ha
-Max_Regul_ES_income=60        #units : UGB/ha
-Min_Regul_ES_income=-90       #units : UGB/ha
+Min_Prov_ES_income=0          #units : eur/ha
+Max_Regul_ES_income=60        #units : eur/ha
+Min_Regul_ES_income=-90       #units : eur/ha
 Discretization_interval_livestock=(Max_density_livestock-Min_density_livestock)/discretization_grid_state
 Discretization_interval_prov_SE=(Max_Prov_ES_income-Min_Prov_ES_income)/discretization_grid_service
 Discretization_interval_regul_SE=(Max_Regul_ES_income-Min_Regul_ES_income)/discretization_grid_service
@@ -51,21 +51,21 @@ Discretization_interval_regul_SE=(Max_Regul_ES_income-Min_Regul_ES_income)/discr
 ############
 baseline_density=Max_density_livestock
 Duration_C_sequestation=100                  #number of years it will take for pasture to sequestrate the observed amount of C
-Vegetation_season_duration=180               #duration grass season in days Salamix (150) d'Alexis (180)
-Potential_aboveground_biomass= 5300          #Laqueuille 3550 d'Alexis 3437 5300 Prairies AOP type 18 p 112
+Vegetation_season_duration=180               #duration grass season (days)
+Potential_aboveground_biomass= 5300          #Prairies AOP type 18 p 112
 Ratio_above_underground_biomass=4            #IPCC 2006 p. 6.8 Table 6.1
 UGB_consump_day=13                           #Baumont et al 2006. 
-Heads_per_cattle_UGB=1.2728#1.3067                  #Salamix  1.2952   d'Alexis (1.75)
-Heads_per_sheep_UGB=7.3718#7.2802                   #Salamix  7.3718   d'Alexis (11.81)
-Minimum_income_from_services=500
-Gain_season_per_UGB_cattle=150.77 #own calculations from Salamix data 
-Gain_season_per_UGB_sheep=128.63  #own calculations from Salamix data
+Heads_per_cattle_UGB=1.2728                  #own calculations
+Heads_per_sheep_UGB=7.3718                   #own calculations
+Minimum_income_from_services=500             #own calculations 
+Gain_season_per_UGB_cattle=150.77            #own calculations  
+Gain_season_per_UGB_sheep=128.63             #own calculations 
 Price_live_weight_cattle=2.75   #2.75 web-agri 25/08/2020 Ussel 
 Price_live_weight_sheep= 3.33   #3.33 web-agri 25/08/2020 Sauges 
 Erosion_prevention_SE_value = 49 #49 #Van der Ploeg and de Groot 2010
-Price_CO2=  0.02815          #0.02815       #https://ember-climate.org/carbon-price-viewer/
-Adjust_coef_calf_ingestion=1 #0.94  #from weight gain calculation cattle
-Adjust_coef_lamb_ingestion=1 #0.95  #from weight gain calculation lamb
+Price_CO2=  0.02815          #0.02815  https://ember-climate.org/carbon-price-viewer/
+Adjust_coef_calf_ingestion=1 #from weight gain calculation cattle
+Adjust_coef_lamb_ingestion=1 #from weight gain calculation lamb
 
 #GHG assessment parameter
 CH4_emission_enteric_fermentation_per_cattle_head=57#    #IPCC Tier 1 ; 57  IPCC 2019 52
@@ -79,8 +79,8 @@ EqCO2_CH4= 28                #IPCC, 2013: p714 Climate Change 2013: The Physical
 EqCO2_N2O=265                #IPCC, 2013: p714 Climate Change 2013: The Physical Science Basis. Contribution of Working Group I to the Fourth Assessment Report of the Intergovernmental Panel on Climate Change [Solomon, S., D. Qin, M. Manning, Z. Chen, M. Marquis, K.B. Averyt, M. Tignor and H.L. Miller (eds.)]. Cambridge University Press, Cambridge, United Kingdom and New York, NY, USA, 996 pp.
 
 Ratio_C_Biomass = 0.47                   #Ratio of carbon to biomass IPCC AFOLU page 6.9
-Ratio_CO2_C=44/12                   #from atomic mass (find a chemistry book)
-SOC_ref = 80000                        #IPCC 2006 (to check with type of soil)
+Ratio_CO2_C=44/12                   #from atomic mass (from a chemistry book)
+SOC_ref = 80000                        #IPCC 2006 (volcanic soil)
 SOC_degradation_factor = 0.95# 0.95       #IPCC 2006 p6.16
 
 
@@ -97,7 +97,7 @@ PPF1=numpy.zeros((discretization_grid_service+1,discretization_grid_service+1)) 
 PPF2=numpy.zeros((discretization_grid_service+1,discretization_grid_service+1)) #will store the binary value of the Pareto front to assess its monetary value
 States_aiming_PPF=numpy.zeros((discretization_grid_state+1,discretization_grid_state+1))
 
-#définition des dynamiques (en fonction locales)
+#définition of dynamics
 def Provisionning_services(Dsheep,Dcattle,Gain_type):
     if Dsheep == 0 and Dcattle == 0: #this line is used to avoid division by zero
         Sheep_ratio = 0.5
@@ -106,9 +106,9 @@ def Provisionning_services(Dsheep,Dcattle,Gain_type):
     
     #this section is used to define the mixity effect (wide hump as with d'Alexis et al. 2014 ('a') or narrow hump ('e'))    
     if Gain_type== 'a':
-        Gain_mixity=Mixity_baseline_gain_factor*(3.3433*Sheep_ratio**3 - 7.8597*Sheep_ratio**2 + 4.1753*Sheep_ratio + 0.341)#(3.3433*Sheep_ratio**3 - 7.8597*Sheep_ratio**2 + 4.1753*Sheep_ratio + 0.3537)#*(4.8874*Sheep_ratio**3 - 10.999*Sheep_ratio**2 + 6.1161*Sheep_ratio) #function used to make the bump shaped function as described in d'Alexis, look for detail in the excel file 
+        Gain_mixity=Mixity_baseline_gain_factor*(3.3433*Sheep_ratio**3 - 7.8597*Sheep_ratio**2 + 4.1753*Sheep_ratio + 0.341)#function used to make the bump shaped function as described in d'Alexis, look for detail in the excel file 
     elif Gain_type== 'e':
-        Gain_mixity=Mixity_baseline_gain_factor*math.exp(-0.5*(((Sheep_ratio-0.46)/0.05)**2))*0.93 #function used to make the bump shaped function as described in d'Alexis, look for detail in the excel file 
+        Gain_mixity=Mixity_baseline_gain_factor*math.exp(-0.5*(((Sheep_ratio-0.46)/0.05)**2))*0.93 #function used to make the bump shaped function with a narrow basis 
     
     #This section calculates meat incomes
     Meat_Prod_sheep=Dsheep*Gain_season_per_UGB_sheep*(1+Gain_mixity)
@@ -167,8 +167,7 @@ def Regulating_services(Dsheep,Dcattle,Gain_mixity):
                              CO2_eq_yearly_sequestrated
     
     GHG_assessment_income=-Assessment_GHG_emmitted*Price_CO2
-        
-        #Erosion SE assessment
+
 
         
     return  Assessment_GHG_emmitted, GHG_assessment_income, Erosion_control_value, \
@@ -469,7 +468,7 @@ elif Treatment_type == "k":
     plot_1 = plt.imshow(Prov_SE_income_state_space_masked.T, cmap=cm.Blues, interpolation='nearest', origin='lower', extent=[Min_density_livestock, Max_density_livestock, Min_density_livestock, Max_density_livestock], aspect = (Max_density_livestock-Min_density_livestock)/(Max_density_livestock-Min_density_livestock))
     plt.xlabel('SR sheep')
     plt.ylabel('SR cattle')
-    plt.title('Provisioning ES (Eur)')
+    plt.title('Provisioning ES (eur/year)')
     plt.colorbar(plot_1)
     plt.grid(True)
 
@@ -478,7 +477,7 @@ elif Treatment_type == "k":
     plot_2 = plt.imshow(Regul_SE_income_state_space_masked.T, cmap=cm.Blues, interpolation='nearest', origin='lower', extent=[Min_density_livestock, Max_density_livestock, Min_density_livestock, Max_density_livestock], aspect = (Max_density_livestock-Min_density_livestock)/(Max_density_livestock-Min_density_livestock))
     plt.xlabel('SR sheep')
     plt.ylabel('SR cattle')
-    plt.title('Regulating ESs (Eur)')
+    plt.title('Regulating ESs (eur/year)')
     plt.colorbar(plot_2)
     plt.grid(True)
     
@@ -501,8 +500,8 @@ elif Treatment_type == "k":
     plt.figure(5)
     Service_space_binary_masked=numpy.ma.masked_equal(Service_space_binary,0)
     plot_5 = plt.imshow(Service_space_binary_masked.T, cmap=cm.Greens, interpolation='nearest', origin='lower',  extent=[Min_Prov_ES_income, Max_Prov_ES_income, Min_Regul_ES_income, Max_Regul_ES_income], aspect = (Max_Prov_ES_income-Min_Prov_ES_income)/(Max_Regul_ES_income-Min_Regul_ES_income))
-    plt.xlabel('Provisioning service (eur)')
-    plt.ylabel('Regulating service (eur)')
+    plt.xlabel('Provisioning services (eur/ha/year)')
+    plt.ylabel('Regulating services (eur/ha/year)')
     plt.title('Existing ES bundles')
     plt.colorbar(plot_5)
     plt.grid(True)
@@ -510,8 +509,8 @@ elif Treatment_type == "k":
 
     plt.figure(6)
     plot_6 = plt.imshow(Service_space_continuous_relative.T, cmap=cm.Greens, interpolation='nearest', origin='lower',  extent=[Min_Prov_ES_income, Max_Prov_ES_income, Min_Regul_ES_income, Max_Regul_ES_income], aspect = (Max_Prov_ES_income-Min_Prov_ES_income)/(Max_Regul_ES_income-Min_Regul_ES_income))
-    plt.xlabel('Provisioning service (eur)')
-    plt.ylabel('Regulating service (eur)')
+    plt.xlabel('Provisioning services (eur/ha/year)')
+    plt.ylabel('Regulating services (eur/ha/year)')
     plt.title('ES bundle robustness')
     plt.colorbar(plot_6)
     plt.grid(True)
@@ -521,8 +520,8 @@ elif Treatment_type == "k":
     cmap=plt.get_cmap('Greens')
     Service_space_continuous_relative_masked=numpy.ma.masked_equal(Service_space_continuous_relative,0)
     plot_7 = plt.imshow(Service_space_continuous_relative_masked.T, cmap=cm.Greens, interpolation='nearest', origin='lower',  extent=[Min_Prov_ES_income, Max_Prov_ES_income, Min_Regul_ES_income, Max_Regul_ES_income], aspect = (Max_Prov_ES_income-Min_Prov_ES_income)/(Max_Regul_ES_income-Min_Regul_ES_income))
-    plt.xlabel('Provisioning service (eur)')
-    plt.ylabel('Regulating service (eur)')
+    plt.xlabel('Provisioning services (eur/ha/year)')
+    plt.ylabel('Regulating services (eur/ha/year)')
     plt.title('ES bundle robustness')
     plt.colorbar(plot_7)
     plt.grid(True)
@@ -532,8 +531,8 @@ elif Treatment_type == "k":
     cmap=plt.get_cmap('Greens')
     PPFF1_masked=numpy.ma.masked_equal(PPFF1,0)    
     plot_8 = plt.imshow(PPFF1_masked.T, cmap=cm.Greens, interpolation='nearest', origin='lower', extent=[Min_Prov_ES_income, Max_Prov_ES_income, Min_Regul_ES_income, Max_Regul_ES_income], aspect = (Max_Prov_ES_income-Min_Prov_ES_income)/(Max_Regul_ES_income-Min_Regul_ES_income))
-    plt.xlabel('Provisioning service (eur)')
-    plt.ylabel('Regulating service (eur)')
+    plt.xlabel('Provisioning services (eur/ha/year)')
+    plt.ylabel('Regulating services (eur/ha/year)')
     plt.title('Production Productivity Frontier (PPF)')
     plt.colorbar(plot_8)
     plt.grid(True)
