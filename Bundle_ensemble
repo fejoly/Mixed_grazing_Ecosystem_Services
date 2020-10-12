@@ -49,42 +49,45 @@ Discretization_interval_regul_SE=(Max_Regul_ES_income-Min_Regul_ES_income)/discr
 ############
 #Parameters#
 ############
+# Bio-technical parameters
 baseline_density=Max_density_livestock
-Duration_C_sequestation=100                  #number of years it will take for pasture to sequestrate the observed amount of C
-Vegetation_season_duration=180               #duration grass season (days)
-Potential_aboveground_biomass= 5300          #Prairies AOP type 18 p 112
-Ratio_above_underground_biomass=4            #IPCC 2006 p. 6.8 Table 6.1
-UGB_consump_day=13                           #Baumont et al 2006. 
-Heads_per_cattle_UGB=1.2728                  #own calculations
-Heads_per_sheep_UGB=7.3718                   #own calculations
-Minimum_income_from_services=500             #own calculations 
-Gain_season_per_UGB_cattle=150.77            #own calculations  
-Gain_season_per_UGB_sheep=128.63             #own calculations 
-Price_live_weight_cattle=2.75   #2.75 web-agri 25/08/2020 Ussel 
-Price_live_weight_sheep= 3.33   #3.33 web-agri 25/08/2020 Sauges 
-Erosion_prevention_SE_value = 49 #49 #Van der Ploeg and de Groot 2010
-Price_CO2=  0.02815          #0.02815  https://ember-climate.org/carbon-price-viewer/
-Adjust_coef_calf_ingestion=1 #from weight gain calculation cattle
-Adjust_coef_lamb_ingestion=1 #from weight gain calculation lamb
+Duration_C_sequestation=100               #number of years it will take for pasture to sequestrate the observed amount of C
+Vegetation_season_duration=180            #duration grass season (days)
+Potential_aboveground_biomass= 5300       #Prairies AOP type 18 p 112
+Ratio_above_underground_biomass=4         #IPCC 2006 p. 6.8 Table 6.1
+UGB_consump_day=13                        #Baumont et al 2006. 
+Heads_per_cattle_UGB=1.2728               #own calculations
+Heads_per_sheep_UGB=7.3718                #own calculations
+Minimum_income_from_services=500          #own calculations 
+Gain_season_per_UGB_cattle=150.77         #own calculations  
+Gain_season_per_UGB_sheep=128.63          #own calculations
+Adjust_coef_calf_ingestion=1              #from weight gain calculation cattle
+Adjust_coef_lamb_ingestion=1              #from weight gain calculation lamb
+
+# Ecosystem service values
+Price_live_weight_cattle=2.75     #2.75 web-agri 25/08/2020 Ussel 
+Price_live_weight_sheep= 3.33     #3.33 web-agri 25/08/2020 Sauges 
+Erosion_prevention_SE_value = 49  #Van der Ploeg and de Groot 2010
+Price_CO2= 0.02815                #0.02815  https://ember-climate.org/carbon-price-viewer/
 
 #GHG assessment parameter
 CH4_emission_enteric_fermentation_per_cattle_head=57#    #IPCC Tier 1 ; 57  IPCC 2019 52
 CH4_emission_enteric_fermentation_per_sheep_head=8#      #IPCC Tier 1 ; 8   IPCC 2019 9
 CH4_emission_manure_per_cattle_head=6#                   #IPCC Tier 1 ; 6
 CH4_emission_manure_per_sheep_head=0.19#                 #IPCC Tier 1 ; 0.19
-N2O_emission_manure_per_cattle_head=1.60#                #IPCC Tier 1 ; 1.60 (the 44/28 corresponds to the stochiometric calculation)
+N2O_emission_manure_per_cattle_head=1.65#                #IPCC Tier 1 ; 1.65 (the 44/28 corresponds to the stochiometric calculation)
 N2O_emission_manure_per_sheep_head=0.20#                 #IPCC Tier 1 ; 0.20 (the 44/28 corresponds to the stochiometric calculation)
 
-EqCO2_CH4= 28                #IPCC, 2013: p714 Climate Change 2013: The Physical Science Basis. Contribution of Working Group I to the Fourth Assessment Report of the Intergovernmental Panel on Climate Change [Solomon, S., D. Qin, M. Manning, Z. Chen, M. Marquis, K.B. Averyt, M. Tignor and H.L. Miller (eds.)]. Cambridge University Press, Cambridge, United Kingdom and New York, NY, USA, 996 pp.
-EqCO2_N2O=265                #IPCC, 2013: p714 Climate Change 2013: The Physical Science Basis. Contribution of Working Group I to the Fourth Assessment Report of the Intergovernmental Panel on Climate Change [Solomon, S., D. Qin, M. Manning, Z. Chen, M. Marquis, K.B. Averyt, M. Tignor and H.L. Miller (eds.)]. Cambridge University Press, Cambridge, United Kingdom and New York, NY, USA, 996 pp.
+EqCO2_CH4= 28             #IPCC, 2013: p714 Climate Change 2013: The Physical Science Basis. Contribution of Working Group I to the Fourth Assessment Report of the Intergovernmental Panel on Climate Change [Solomon, S., D. Qin, M. Manning, Z. Chen, M. Marquis, K.B. Averyt, M. Tignor and H.L. Miller (eds.)]. Cambridge University Press, Cambridge, United Kingdom and New York, NY, USA, 996 pp.
+EqCO2_N2O=265             #IPCC, 2013: p714 Climate Change 2013: The Physical Science Basis. Contribution of Working Group I to the Fourth Assessment Report of the Intergovernmental Panel on Climate Change [Solomon, S., D. Qin, M. Manning, Z. Chen, M. Marquis, K.B. Averyt, M. Tignor and H.L. Miller (eds.)]. Cambridge University Press, Cambridge, United Kingdom and New York, NY, USA, 996 pp.
 
-Ratio_C_Biomass = 0.47                   #Ratio of carbon to biomass IPCC AFOLU page 6.9
-Ratio_CO2_C=44/12                   #from atomic mass (from a chemistry book)
-SOC_ref = 80000                        #IPCC 2006 (volcanic soil)
-SOC_degradation_factor = 0.95# 0.95       #IPCC 2006 p6.16
+Ratio_C_Biomass = 0.47           #Ratio of carbon to biomass IPCC AFOLU page 6.9
+Ratio_CO2_C=44/12                #from atomic mass (from a chemistry book)
+SOC_ref = 80000                  #IPCC 2006 (volcanic soil)
+SOC_degradation_factor = 0.95    #IPCC 2006 p6.16
 
 
-#Generation of Trajectories_space and Capture_basin matrix
+#State spaces
 Income_state_space=numpy.zeros((discretization_grid_state+1,discretization_grid_state+1)) #Matrix used to store the viability score (viable=1, nonviable=0), value of provision services, value of regulating services
 Minimum_income_state_space=numpy.zeros((discretization_grid_state+1,discretization_grid_state+1))
 Prov_SE_income_state_space=numpy.zeros((discretization_grid_state+1,discretization_grid_state+1))
@@ -97,7 +100,7 @@ PPF1=numpy.zeros((discretization_grid_service+1,discretization_grid_service+1)) 
 PPF2=numpy.zeros((discretization_grid_service+1,discretization_grid_service+1)) #will store the binary value of the Pareto front to assess its monetary value
 States_aiming_PPF=numpy.zeros((discretization_grid_state+1,discretization_grid_state+1))
 
-#définition of dynamics
+#definition of dynamics
 def Provisionning_services(Dsheep,Dcattle,Gain_type):
     if Dsheep == 0 and Dcattle == 0: #this line is used to avoid division by zero
         Sheep_ratio = 0.5
@@ -144,7 +147,7 @@ def Regulating_services(Dsheep,Dcattle,Gain_mixity):
     #C storage and erosion control
     if Use_Pasim_outputs== 'y':
         [soc_studied,soc_baseline,above_biomass_studied,above_biomass_max]=Extraction_PASIM_output((Dsheep+Dcattle),baseline_density,Pasim_Output,interval_matrix_data)
-        Erosion_control_value=Erosion_prevention_SE_value*(1-((1-above_biomass_studied/above_biomass_max)/0.91)**3)
+        Erosion_control_value=Erosion_prevention_SE_value*(1-((1-above_biomass_studied/above_biomass_max)/0.91)**3)  #Erosion_control_value=Erosion_prevention_SE_value*(1-((1-above_biomass_studied/above_biomass_max)/0.91)**3)
         CO2_eq_yearly_sequestrated=(soc_studied-soc_baseline)/Duration_C_sequestation
                 
     elif Use_Pasim_outputs== 'n':
@@ -258,13 +261,13 @@ elif Treatment_type == "t":
      no2_manure_emission_cattle, no2_manure_emission_sheep, \
      co2_eq_yearly_sequestrated,residual_biomass_studied]= Regulating_services(dsheep,dcattle,gain_mixity)
     print("")
-    print('Produced equivalant liveweight:', round(produced_meat,2),'kg for a meat income of', round(meat_income,2), 'eur')
+    print('Produced equivalent liveweight:', round(produced_meat,2),'kg for a meat income of', round(meat_income,2), 'eur')
     print('Yearly CH4 enteric emissions of cattle and sheep are resp.', round(ch4_enteric_emission_cattle,2), ' and ',  round(ch4_enteric_emission_sheep,2), 'kg')
     print('Yearly CH4 manure emissions of cattle and sheep are resp. ', round(ch4_manure_emission_cattle,2), ' and ', round(ch4_manure_emission_sheep,2), 'kg')    
     print('Yearly NO2 manure emissions of cattle and sheep are resp. ', round(no2_manure_emission_cattle,2), ' and ', round(no2_manure_emission_sheep,2), 'kg')
     print('Yearly emission of CO2 by pasture is', round(-co2_eq_yearly_sequestrated,2), 'kg')
     print('Emitted GHG over the year is:', round(ghg_assessment,2),'kg of eq. CO2 for a corresponding revenue of ', round(ghg_assessment_income,2), 'eur')
-    print('The erosion prevention ES accounts for',round(erosion_control_value,2), 'eur')
+    print('The erosion prevention ES accounts for',round(erosion_control_value,4), 'eur')
 elif Treatment_type == "k":
     Use_Pasim_outputs = input('Use PASIM outputs in regulating SE assessment? ("y" or "n"): ')
     if Use_Pasim_outputs =='y':
